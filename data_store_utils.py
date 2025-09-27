@@ -1,91 +1,56 @@
-# data_store_utils.py
-import json
+# data_store_utils.py (Firebase-only version)
 import os
-from threading import Lock
-from typing import Dict, Any
+import json
+import requests
+from dotenv import load_dotenv
 
-# ---------- File-based defaults ----------
-DATA_FILE = os.path.join(os.path.dirname(__file__), "data_store.json")
+load_dotenv()
+
+# --- Firebase Configuration ---
+FIREBASE_DB_URL = os.getenv("FIREBASE_DB_URL", "").rstrip("/")
+if not FIREBASE_DB_URL:
+    raise RuntimeError("CRITICAL: FIREBASE_DB_URL is not configured in the environment.")
+
+# The path within your database where the application data will be stored.
+DATA_PATH = "/store/data"
 
 DEFAULT_STORE = {
-    "availability": {},   # "d_s" (e.g. "0_3") -> bool
-    "bookings": [],       # {"day":int,"slot":int,"token":str,"time":str}
-    "counsellors": [],    # {"id":int,"name":str,"specialty":str}
-    "chat_logs": [],      # optional
+    "availability": {},
+    "bookings": [],
+    "counsellors": [],
 }
 
-_lock = Lock()
-
-# ---------- Firestore setup ----------
-USE_FIRESTORE = os.environ.get("USE_FIRESTORE", "").lower() in ("1", "true", "yes")
-FIRESTORE_COLLECTION = os.environ.get("FIRESTORE_COLLECTION", "healnest_store")
-FIRESTORE_DOC_ID = os.environ.get("FIRESTORE_DOC_ID", "default")
-
-_firestore_client = None
-_firestore_available = False
-
-if USE_FIRESTORE:
+def load_data():
+    """
+    Loads the entire data store from a single key in Firebase Realtime Database.
+    If no data exists, it returns the default structure.
+    """
     try:
-        from google.cloud import firestore  # type: ignore
-        _firestore_client = firestore.Client()
-        _firestore_available = True
-        print("[data_store_utils] Using Firestore backend")
-    except Exception as e:
-        print(f"[data_store_utils] Firestore init failed, falling back to JSON: {e}")
-        _firestore_available = False
+        url = f"{FIREBASE_DB_URL}{DATA_PATH}.json"
+        response = requests.get(url, timeout=8)
+        response.raise_for_status()
+        data = response.json()
+        
+        if data is None:
+            return DEFAULT_STORE.copy()
+        
+        for key in DEFAULT_STORE:
+            if key not in data:
+                data[key] = DEFAULT_STORE[key]
+        return data
 
-
-# ---------- File helpers ----------
-def _read_file_store() -> Dict[str, Any]:
-    if not os.path.exists(DATA_FILE):
+    except requests.exceptions.RequestException as e:
+        print(f"[data_store_utils] Firebase read error: {e}")
         return DEFAULT_STORE.copy()
-    with _lock:
-        try:
-            with open(DATA_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            for k in DEFAULT_STORE:
-                if k not in data:
-                    data[k] = DEFAULT_STORE[k]
-            return data
-        except Exception:
-            return DEFAULT_STORE.copy()
 
-
-def _write_file_store(data: Dict[str, Any]) -> None:
-    with _lock:
-        tmp = DATA_FILE + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-        os.replace(tmp, DATA_FILE)
-
-
-# ---------- Public API ----------
-def load_data() -> Dict[str, Any]:
-    if USE_FIRESTORE and _firestore_available:
-        try:
-            doc_ref = _firestore_client.collection(FIRESTORE_COLLECTION).document(FIRESTORE_DOC_ID)
-            doc = doc_ref.get()
-            if doc.exists:
-                data = doc.to_dict().get("payload", {})
-                if isinstance(data, dict):
-                    for k in DEFAULT_STORE:
-                        if k not in data:
-                            data[k] = DEFAULT_STORE[k]
-                    return data
-            return DEFAULT_STORE.copy()
-        except Exception as e:
-            print(f"[data_store_utils] Firestore read error, using JSON fallback: {e}")
-            return _read_file_store()
-    else:
-        return _read_file_store()
-
-
-def save_data(data: Dict[str, Any]) -> None:
-    if USE_FIRESTORE and _firestore_available:
-        try:
-            doc_ref = _firestore_client.collection(FIRESTORE_COLLECTION).document(FIRESTORE_DOC_ID)
-            doc_ref.set({"payload": data})
-            return
-        except Exception as e:
-            print(f"[data_store_utils] Firestore write error, using JSON fallback: {e}")
-    _write_file_store(data)
+def save_data(data):
+    """
+    Saves the entire data store to a single key in Firebase using a PUT request,
+    which overwrites the existing data at that path.
+    """
+    try:
+        url = f"{FIREBASE_DB_URL}{DATA_PATH}.json"
+        response = requests.put(url, data=json.dumps(data), timeout=8)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"[data_store_utils] Firebase write error: {e}")
