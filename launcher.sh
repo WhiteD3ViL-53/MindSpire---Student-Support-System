@@ -1,19 +1,24 @@
 #!/bin/bash
-# launcher.sh (Updated)
+# launcher.sh (Final Version)
 
 set -e
 
-# Start the Student App on internal port 8501
-streamlit run mental.py --server.port 8501 --server.headless true &
+# Start Student App on port 8501 with a specific base URL path
+streamlit run mental.py \
+  --server.port 8501 \
+  --server.headless true \
+  --server.baseUrlPath student &
 
-# Start the Admin App on internal port 8502
-# The --server.baseUrlPath is the crucial new part
-streamlit run Admin.py --server.port 8502 --server.headless true --server.baseUrlPath admin &
+# Start Admin App on port 8502 with its own base URL path
+streamlit run Admin.py \
+  --server.port 8502 \
+  --server.headless true \
+  --server.baseUrlPath admin &
 
-# Start the Escalation Webhook on internal port 8000
+# Start the Escalation Webhook
 python escalate.py &
 
-# Start the Call Events Webhook on internal port 5001
+# Start the Call Events Webhook
 python call_events.py &
 
 # Start the Proxy server in the foreground
