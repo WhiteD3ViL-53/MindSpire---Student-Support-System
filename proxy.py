@@ -1,4 +1,4 @@
-# proxy.py
+# proxy.py (Updated)
 import os
 import requests
 from flask import Flask, request, Response, stream_with_context
@@ -6,7 +6,6 @@ from flask import Flask, request, Response, stream_with_context
 app = Flask(__name__)
 
 # --- Internal targets for each service running in the container ---
-# These ports must match the ports in launcher.sh
 TARGETS = {
     "student": os.environ.get("STUDENT_TARGET", "http://127.0.0.1:8501"),
     "admin": os.environ.get("ADMIN_TARGET", "http://127.0.0.1:8502"),
@@ -14,13 +13,11 @@ TARGETS = {
     "call_events": os.environ.get("CALLEVENTS_TARGET", "http://127.0.0.1:5001")
 }
 
-# The main port Railway will expose to the internet
 PORT = int(os.environ.get("PORT", 8080))
 
 def _proxy_request(target_base_url):
     """Streams the request and response to/from the target service."""
     target_url = target_base_url + request.full_path
-    
     headers = {k: v for k, v in request.headers if k.lower() != 'host'}
     
     try:
@@ -52,6 +49,7 @@ def proxy_router(path):
         return _proxy_request(TARGETS["escalate"])
     if path.startswith("call-events"):
         return _proxy_request(TARGETS["call_events"])
+    
     # Default traffic goes to the student app
     return _proxy_request(TARGETS["student"])
 
