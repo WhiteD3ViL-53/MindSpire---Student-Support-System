@@ -128,7 +128,7 @@ with tabs[0]:
     c3.metric("Configured Counsellors", str(len(store.get("counsellors", []))))
     st.markdown("---")
     
-    st.subheader("📊 Weekly Analytics")
+    st.subheader("  Weekly Analytics")
     chart_col1, chart_col2 = st.columns(2)
     with chart_col1:
         st.markdown("##### Bookings by Day")
@@ -276,4 +276,5 @@ st.markdown("</div>", unsafe_allow_html=True)
 # Auto-refresh logic at the end of the script
 if st.session_state.auto_refresh:
     time.sleep(15)
+
     st.rerun()
