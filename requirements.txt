@@ -1,4 +1,4 @@
-
+# requirements.txt
 streamlit
 flask
 requests
@@ -6,3 +6,4 @@ python-dotenv
 twilio
 pandas
 google-cloud-firestore
+gunicorn 
