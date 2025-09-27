@@ -1,0 +1,22 @@
+# .gitignore
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+.venv/
+env/
+.env
+
+# Local data and secrets
+data_store.json
+*.log
+
+# IDE and OS files
+.idea/
+.vscode/
+.DS_Store
