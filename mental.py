@@ -319,7 +319,7 @@ if st.session_state.active_resource_view:
 # -----------------------
 st.markdown('<div class="main-wrap">', unsafe_allow_html=True)
 c1, c2 = st.columns([1, 8])
-logo_path = r"C:\Users\SIDDHANT THAKUR\Desktop\HealNest\MindSpire.png" if os.path.exists(r"C:\Users\SIDDHANT THAKUR\Desktop\HealNest\MindSpire.png") else "logo.png"
+logo_path = "MindSpire.png" if os.path.exists("MindSpire.png") else "logo.png"
 if os.path.exists(logo_path):
     with c1: st.image(logo_path, width=120)
 with c2:
@@ -401,4 +401,5 @@ with c2:
 # --- Footer ---
 st.markdown('---')
 st.caption("© 2025 MindSpire — For demonstration purposes only. If you are in crisis, please contact local emergency services immediately.")
+
 st.markdown('</div>', unsafe_allow_html=True)
