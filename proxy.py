@@ -1,25 +1,28 @@
-# proxy.py — simple HTTP proxy to forward / and /admin paths to local services.
-# NOTE: Use for local development or special multi-process containers only.
+# proxy.py
 import os
 import requests
 from flask import Flask, request, Response, stream_with_context
 
 app = Flask(__name__)
 
-MAIN_TARGET = os.environ.get("MAIN_TARGET", "http://127.0.0.1:8501")
-ADMIN_TARGET = os.environ.get("ADMIN_TARGET", "http://127.0.0.1:8502")
+# --- Internal targets for each service running in the container ---
+# These ports must match the ports in launcher.sh
+TARGETS = {
+    "student": os.environ.get("STUDENT_TARGET", "http://127.0.0.1:8501"),
+    "admin": os.environ.get("ADMIN_TARGET", "http://127.0.0.1:8502"),
+    "escalate": os.environ.get("ESCALATE_TARGET", "http://127.0.0.1:8000"),
+    "call_events": os.environ.get("CALLEVENTS_TARGET", "http://127.0.0.1:5001")
+}
+
+# The main port Railway will expose to the internet
 PORT = int(os.environ.get("PORT", 8080))
 
-def _proxy_request(target_base):
-    # request.full_path contains path + query (e.g. /path?x=1). Remove trailing ? if no query.
-    path = request.full_path
-    if path.endswith('?'):
-        path = path[:-1]
-    target_url = target_base + path
-
-    # Build headers — skip hop-by-hop headers and Host
-    headers = {k: v for k, v in request.headers.items() if k.lower() not in ("host", "content-length", "transfer-encoding", "connection")}
-
+def _proxy_request(target_base_url):
+    """Streams the request and response to/from the target service."""
+    target_url = target_base_url + request.full_path
+    
+    headers = {k: v for k, v in request.headers if k.lower() != 'host'}
+    
     try:
         resp = requests.request(
             method=request.method,
@@ -30,29 +33,27 @@ def _proxy_request(target_base):
             stream=True,
             timeout=30
         )
-    except Exception as e:
-        return Response(f"Upstream request failed: {e}", status=502)
+    except requests.exceptions.RequestException as e:
+        return Response(f"Upstream service failed: {e}", status=502)
 
-    excluded = {"content-encoding", "content-length", "transfer-encoding", "connection"}
-    resp_headers = [(n, v) for n, v in resp.headers.items() if n.lower() not in excluded]
+    excluded_headers = ['content-encoding', 'content-length', 'transfer-encoding', 'connection']
+    resp_headers = [(name, value) for name, value in resp.raw.headers.items() if name.lower() not in excluded_headers]
 
-    return Response(
-        stream_with_context(resp.iter_content(chunk_size=8192)),
-        status=resp.status_code,
-        headers=resp_headers,
-    )
+    return Response(stream_with_context(resp.iter_content(chunk_size=8192)), resp.status_code, resp_headers)
 
-# Admin proxy
-@app.route("/admin", defaults={"path": ""}, methods=["GET","POST","OPTIONS","PUT","DELETE","PATCH"])
-@app.route("/admin/<path:path>", methods=["GET","POST","OPTIONS","PUT","DELETE","PATCH"])
-def proxy_admin(path):
-    return _proxy_request(ADMIN_TARGET)
-
-# Main proxy
-@app.route("/", defaults={"path": ""}, methods=["GET","POST","OPTIONS","PUT","DELETE","PATCH"])
-@app.route("/<path:path>", methods=["GET","POST","OPTIONS","PUT","DELETE","PATCH"])
-def proxy_main(path):
-    return _proxy_request(MAIN_TARGET)
+# --- Routing rules ---
+@app.route("/<path:path>", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+@app.route("/", defaults={"path": ""}, methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+def proxy_router(path):
+    """Directs traffic based on the URL path."""
+    if path.startswith("admin"):
+        return _proxy_request(TARGETS["admin"])
+    if path.startswith("escalate"):
+        return _proxy_request(TARGETS["escalate"])
+    if path.startswith("call-events"):
+        return _proxy_request(TARGETS["call_events"])
+    # Default traffic goes to the student app
+    return _proxy_request(TARGETS["student"])
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=PORT)
