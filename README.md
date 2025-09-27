@@ -1,4 +1,4 @@
-# MindSpire: A Mental Health Support Platform
+# MindSpire: A Mental Health Support Platform for Students
 
 MindSpire is a comprehensive prototype for a student mental health support system. It combines a student-facing dashboard with an anonymous peer support forum, a counsellor booking system, and a crisis escalation service powered by a chatbot and Twilio.
 
