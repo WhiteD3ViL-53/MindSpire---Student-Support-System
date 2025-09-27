@@ -1,7 +1,7 @@
-# proxy.py (Updated)
+# proxy.py (Final Version)
 import os
 import requests
-from flask import Flask, request, Response, stream_with_context
+from flask import Flask, request, Response, stream_with_context, redirect
 
 app = Flask(__name__)
 
@@ -16,10 +16,13 @@ TARGETS = {
 PORT = int(os.environ.get("PORT", 8080))
 
 def _proxy_request(target_base_url):
-    """Streams the request and response to/from the target service."""
+    """Streams the request and response, correctly passing headers."""
     target_url = target_base_url + request.full_path
-    headers = {k: v for k, v in request.headers if k.lower() != 'host'}
     
+    # Correctly pass along the Host header
+    headers = {key: value for (key, value) in request.headers}
+    headers['Host'] = request.host.split(':')[0] # Use the public host, not the internal one
+
     try:
         resp = requests.request(
             method=request.method,
@@ -40,7 +43,6 @@ def _proxy_request(target_base_url):
 
 # --- Routing rules ---
 @app.route("/<path:path>", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
-@app.route("/", defaults={"path": ""}, methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 def proxy_router(path):
     """Directs traffic based on the URL path."""
     if path.startswith("admin"):
@@ -50,8 +52,13 @@ def proxy_router(path):
     if path.startswith("call-events"):
         return _proxy_request(TARGETS["call_events"])
     
-    # Default traffic goes to the student app
+    # All other paths, including /student, go to the student app
     return _proxy_request(TARGETS["student"])
+
+@app.route("/")
+def index():
+    """Redirects the root path to the student app."""
+    return redirect("/student/")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=PORT)
