@@ -4,14 +4,14 @@ Please note that this is just a demo not a final product. The final project will
 
 MindSpire is a comprehensive prototype for a student mental health support system. It combines a student-facing dashboard with an anonymous peer support forum, a counsellor booking system, and a crisis escalation service powered by a chatbot and Twilio.
 
-## ✨ Features
+##  Features
 
 * **Student Dashboard (`mental.py`):** A central hub for students to access resources, check their mood, book appointments, and chat with a support bot.
 * **Admin Dashboard (`Admin.py`):** A secure panel for counsellors/admins to manage bookings, set availability, view analytics on platform usage, and monitor crisis escalations.
 * **Peer Support Forum (`peer_chat.py`):** An anonymous, real-time chat forum with different channels for students to connect and support each other. Includes moderation tools and keyword-based crisis detection.
 * **Crisis Escalation (`escalate.py` & Botpress):** A robust webhook system that allows a chatbot (like Botpress) to trigger a direct phone call to a counsellor via Twilio when a user is in crisis.
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 * **Frontend:** Streamlit
 * **Backend Webhooks:** Flask
@@ -22,7 +22,7 @@ MindSpire is a comprehensive prototype for a student mental health support syste
 
 ---
 
-## 🚀 Getting Started
+##  Getting Started
 
 Follow these steps to set up and run the project locally.
 
